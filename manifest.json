@@ -1,0 +1,25 @@
+{
+  "name": "MPSC अभ्यास (MPSC Abhyas)",
+  "short_name": "MPSC अभ्यास",
+  "description": "महाराष्ट्र लोकसेवा आयोग (MPSC) अभ्यास व सर्वसमावेशक प्रश्न सराव",
+  "start_url": "practice.php",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#111827",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

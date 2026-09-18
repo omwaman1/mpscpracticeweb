@@ -1,0 +1,16 @@
+RewriteEngine On
+RewriteBase /search/
+
+# Force Browser No-Cache for PHP and HTML
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</IfModule>
+
+# Don't rewrite existing files or directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite /search/{slug} -> /search/subject.php?slug={slug}
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ subject.php?slug=$1 [L,QSA]

@@ -1,0 +1,16 @@
+﻿# Local secret overrides
+config.local.php
+
+# Environment & OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Sessions
+*.log
+*.tmp
+sess_*
+
+# Backups
+*.bak
+*.swp
