@@ -50,7 +50,21 @@ if ($isAdmin && isset($_POST['action'])) {
             $stmt->execute([$email, 'विद्यार्थी (Student)']);
         }
 
-        if ($action === 'grant_month') {
+        if ($action === 'grant_day') {
+            // Grant access until today 12:00 AM midnight
+            $expiry = date('Y-m-d 23:59:59');
+            $checkSub = $pdo->prepare("SELECT id FROM tbl_app_subscriptions WHERE user_email = ? ORDER BY id DESC LIMIT 1");
+            $checkSub->execute([$email]);
+            $sub = $checkSub->fetch();
+            if ($sub) {
+                $pdo->prepare("UPDATE tbl_app_subscriptions SET status = 'active', plan_name = 'Daily Pass (1 Day)', amount = 10.00, activated_at = NOW(), expires_at = ?, notes = '१ दिवस ॲक्सेस (आज रात्री १२ वाजेपर्यंत) मंजूर केला' WHERE id = ?")
+                    ->execute([$expiry, $sub['id']]);
+            } else {
+                $pdo->prepare("INSERT INTO tbl_app_subscriptions (user_email, plan_name, amount, status, activated_at, expires_at, notes) VALUES (?, 'Daily Pass (1 Day)', 10.00, 'active', NOW(), ?, '१ दिवस ॲक्सेस (आज रात्री १२ वाजेपर्यंत) मंजूर केला')")
+                    ->execute([$email, $expiry]);
+            }
+            $successMsg = "ईमेल [{$email}] साठी आज रात्री १२ वाजेपर्यंतचा (१ दिवस) दैनिक ॲक्सेस सक्रिय केला!";
+        } elseif ($action === 'grant_month') {
             // Grant or extend 30 days
             $expiry = date('Y-m-d H:i:s', strtotime('+30 days'));
             $stmt = $pdo->prepare("
@@ -782,10 +796,13 @@ if ($isAdmin) {
                                     </td>
                                     <td>
                                         <?php if ($hasEmail && !$isPro): ?>
-                                            <form method="POST" style="display:inline;">
+                                            <form method="POST" style="display:inline-flex; gap: 4px;">
                                                 <input type="hidden" name="email" value="<?= htmlspecialchars($v['user_email']) ?>">
+                                                <button type="submit" name="action" value="grant_day" class="btn-act-day" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fde047; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;" title="आज रात्री १२ वाजेपर्यंत १ दिवस ॲक्सेस द्या">
+                                                    <i class="fa-solid fa-bolt"></i> ₹१० (१ दिवस)
+                                                </button>
                                                 <button type="submit" name="action" value="grant_month" class="btn-act-month" title="१ महिना ॲक्सेस द्या">
-                                                    <i class="fa-solid fa-bolt"></i> ₹१९९ द्या
+                                                    <i class="fa-solid fa-plus"></i> १ महिना
                                                 </button>
                                             </form>
                                         <?php elseif ($hasEmail && $isPro): ?>
@@ -809,8 +826,11 @@ if ($isAdmin) {
             </div>
             <form method="POST" class="add-user-form">
                 <input type="email" name="email" class="input-email" placeholder="विद्यार्थ्याचा ईमेल टाका (उदा. student@gmail.com)" required>
+                <button type="submit" name="action" value="grant_day" class="btn-submit-action" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                    <i class="fa-solid fa-bolt"></i> ₹१० १ दिवस (आज रात्री १२ पर्यंत)
+                </button>
                 <button type="submit" name="action" value="grant_month" class="btn-submit-action">
-                    <i class="fa-solid fa-bolt"></i> ₹१९९ १ महिना ॲक्सेस द्या
+                    <i class="fa-solid fa-plus"></i> १ महिना ॲक्सेस द्या
                 </button>
                 <button type="submit" name="action" value="grant_year" class="btn-submit-action" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
                     <i class="fa-solid fa-star"></i> १ वर्ष ॲक्सेस द्या
@@ -879,10 +899,18 @@ if ($isAdmin) {
                                 </td>
                                 <td style="font-size: 12.5px;">
                                     <?php if ($isActive && !empty($u['expires_at'])): 
-                                        $diffDays = ceil((strtotime($u['expires_at']) - time()) / 86400);
+                                        $expSec = strtotime($u['expires_at']) - time();
+                                        $diffHours = ceil($expSec / 3600);
+                                        $diffDays = ceil($expSec / 86400);
                                     ?>
-                                        <span style="color: #34d399; font-weight: 600;"><?= date('d M Y', strtotime($u['expires_at'])) ?></span>
-                                        <div style="font-size: 11px; color: var(--text-muted);">(<?= $diffDays ?> दिवस शिल्लक)</div>
+                                        <span style="color: #34d399; font-weight: 600;"><?= date('d M Y, h:i A', strtotime($u['expires_at'])) ?></span>
+                                        <?php if ($diffHours <= 24 && $diffHours > 0): ?>
+                                            <div style="font-size: 11px; color: #fbbf24; font-weight: 600;"><i class="fa-solid fa-clock"></i> <?= $diffHours ?> तास शिल्लक (आज रात्री १२ पर्यंत)</div>
+                                        <?php elseif ($diffDays > 0): ?>
+                                            <div style="font-size: 11px; color: var(--text-muted);">(<?= $diffDays ?> दिवस शिल्लक)</div>
+                                        <?php else: ?>
+                                            <div style="font-size: 11px; color: #ef4444;">मुदत संपली</div>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span style="color: #64748b;">—</span>
                                     <?php endif; ?>
@@ -891,8 +919,12 @@ if ($isAdmin) {
                                     <form method="POST" class="action-btns-cell">
                                         <input type="hidden" name="email" value="<?= htmlspecialchars($u['email']) ?>">
                                         
+                                        <button type="submit" name="action" value="grant_day" class="btn-act-day" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fde047; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="आज रात्री १२ वाजेपर्यंत १ दिवस ॲक्सेस द्या">
+                                            <i class="fa-solid fa-bolt"></i> ₹१० १ दिवस
+                                        </button>
+                                        
                                         <button type="submit" name="action" value="grant_month" class="btn-act-month" title="१ महिन्यासाठी सक्रिय करा">
-                                            <i class="fa-solid fa-plus"></i> १ महिना ॲक्सेस द्या
+                                            <i class="fa-solid fa-plus"></i> १ महिना
                                         </button>
                                         
                                         <button type="submit" name="action" value="grant_year" class="btn-act-year" title="१ वर्षासाठी सक्रिय करा">

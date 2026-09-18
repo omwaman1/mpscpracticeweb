@@ -26,6 +26,7 @@ if (!function_exists('getClientIP')) {
 $userSession = null;
 $isSubscribedUser = false;
 $userExpiresAt = null;
+$userHoursLeft = 0;
 $userDaysLeft = 0;
 $userTrialExpired = false;
 $trialLimitSeconds = defined('FREE_TRIAL_SECONDS') ? FREE_TRIAL_SECONDS : 3600;
@@ -72,7 +73,9 @@ if ($pdoInit && !empty($_SESSION['mpsc_user_email'])) {
                 $isSubscribedUser = true;
                 $userExpiresAt = $subRow['expires_at'];
                 if ($userExpiresAt) {
-                    $userDaysLeft = max(1, ceil((strtotime($userExpiresAt) - time()) / 86400));
+                    $secondsLeft = max(0, strtotime($userExpiresAt) - time());
+                    $userHoursLeft = max(1, ceil($secondsLeft / 3600));
+                    $userDaysLeft = max(1, ceil($secondsLeft / 86400));
                 }
             }
         }
@@ -624,13 +627,16 @@ if ($isAjaxRequest) {
         $sub = $subStmt->fetch();
         $isSubscribed = false;
         $expiresAt = null;
+        $hoursLeft = 0;
         $daysLeft = 0;
         if ($sub && $sub['status'] === 'active') {
             if (empty($sub['expires_at']) || strtotime($sub['expires_at']) > time()) {
                 $isSubscribed = true;
                 $expiresAt = $sub['expires_at'];
                 if ($expiresAt) {
-                    $daysLeft = max(1, ceil((strtotime($expiresAt) - time()) / 86400));
+                    $secLeft = max(0, strtotime($expiresAt) - time());
+                    $hoursLeft = max(1, ceil($secLeft / 3600));
+                    $daysLeft = max(1, ceil($secLeft / 86400));
                 }
             }
         }
@@ -644,6 +650,7 @@ if ($isAjaxRequest) {
             ],
             'is_subscribed' => $isSubscribed,
             'expires_at' => $expiresAt,
+            'hours_left' => $hoursLeft,
             'days_left' => $daysLeft
         ], JSON_UNESCAPED_UNICODE);
         exit;
@@ -654,12 +661,13 @@ if ($isAjaxRequest) {
         $email = trim($_POST['email'] ?? $_GET['email'] ?? '');
         $name = trim($_POST['name'] ?? $_GET['name'] ?? '');
         $phone = trim($_POST['phone'] ?? $_GET['phone'] ?? '');
+        $planPrice = defined('DAILY_PASS_PRICE') ? DAILY_PASS_PRICE : 10.00;
 
         if (!empty($email)) {
             $pdo->prepare("
                 INSERT INTO tbl_app_subscriptions (user_email, plan_name, amount, status, notes)
-                VALUES (?, '1 Month Unlimited', 199.00, 'pending', ?)
-            ")->execute([$email, "Razorpay UPI Payment Initiated. Phone: " . $phone . ", Name: " . $name]);
+                VALUES (?, 'Daily Pass (1 Day)', ?, 'pending', ?)
+            ")->execute([$email, $planPrice, "Razorpay UPI Payment Initiated for ₹10 Daily Pass. Phone: " . $phone . ", Name: " . $name]);
         }
 
         $paymentUrl = defined('RAZORPAY_PAYMENT_URL') && !empty(RAZORPAY_PAYMENT_URL) ? RAZORPAY_PAYMENT_URL : 'https://razorpay.com/payment-link/plink_TdDywf5XdCQKM3';
@@ -675,6 +683,7 @@ if ($isAjaxRequest) {
         $email = trim($_GET['email'] ?? $_SESSION['mpsc_user_email'] ?? '');
         $isSubscribed = false;
         $expiresAt = null;
+        $hoursLeft = 0;
         $daysLeft = 0;
 
         if (!empty($email)) {
@@ -686,7 +695,9 @@ if ($isAjaxRequest) {
                     $isSubscribed = true;
                     $expiresAt = $sub['expires_at'];
                     if ($expiresAt) {
-                        $daysLeft = max(1, ceil((strtotime($expiresAt) - time()) / 86400));
+                        $secLeft = max(0, strtotime($expiresAt) - time());
+                        $hoursLeft = max(1, ceil($secLeft / 3600));
+                        $daysLeft = max(1, ceil($secLeft / 86400));
                     }
                 }
             }
@@ -697,6 +708,7 @@ if ($isAjaxRequest) {
             'email' => $email,
             'is_subscribed' => $isSubscribed,
             'expires_at' => $expiresAt,
+            'hours_left' => $hoursLeft,
             'days_left' => $daysLeft
         ]);
         exit;
@@ -939,12 +951,16 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
+            flex-wrap: nowrap;
         }
 
         .nav-left {
             display: flex;
             align-items: center;
             gap: 14px;
+            min-width: 0;
+            flex: 1 1 auto;
         }
 
         .btn-sidebar-toggle {
@@ -960,6 +976,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             cursor: pointer;
             font-size: 16px;
             transition: all 0.2s;
+            flex-shrink: 0;
         }
 
         .btn-sidebar-toggle:hover {
@@ -974,6 +991,8 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             gap: 12px;
             text-decoration: none;
             color: #fff;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .nav-brand-logo {
@@ -987,6 +1006,12 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             font-size: 18px;
             color: #fff;
             box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+            flex-shrink: 0;
+        }
+
+        .nav-brand-text {
+            min-width: 0;
+            overflow: hidden;
         }
 
         .nav-brand-text h1 {
@@ -998,12 +1023,18 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             display: flex;
             align-items: center;
             gap: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .nav-brand-text p {
             font-size: 11px;
             color: var(--text-muted);
             font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .nav-badge-goal {
@@ -1016,6 +1047,15 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-shrink: 0;
         }
 
         /* ─── App Container (Full Width For Maximum Reading Space) ─── */
@@ -2212,33 +2252,130 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             }
             .navbar {
                 padding: 10px 14px;
+                gap: 8px;
             }
             .nav-left {
-                gap: 10px;
+                gap: 8px;
+                min-width: 0;
+                flex: 1 1 auto;
             }
             .nav-brand {
-                gap: 10px;
+                gap: 8px;
+                min-width: 0;
             }
             .nav-brand-logo {
                 width: 34px;
                 height: 34px;
                 font-size: 15px;
                 border-radius: 8px;
+                flex-shrink: 0;
+            }
+            .nav-brand-text {
+                min-width: 0;
             }
             .nav-brand-text h1 {
                 font-size: 15px;
                 gap: 6px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .nav-badge-goal {
                 font-size: 10px;
                 padding: 2px 7px;
+                flex-shrink: 0;
             }
             .nav-brand-text p {
                 display: none;
             }
+            .nav-right {
+                flex-shrink: 0;
+            }
+            .nav-user-area {
+                margin-left: 4px;
+                gap: 6px;
+                flex-shrink: 0;
+                flex-wrap: nowrap;
+            }
+            .nav-sub-pill, .nav-trial-pill {
+                padding: 4px 10px;
+                font-size: 11px;
+                flex-shrink: 0;
+            }
+            .nav-login-btn {
+                padding: 4px 10px;
+                font-size: 11px;
+                flex-shrink: 0;
+            }
+            .nav-user-email-text {
+                max-width: 85px;
+            }
             .sidebar {
                 width: min(320px, 88vw);
             }
+        }
+
+        @media (max-width: 520px) {
+            .navbar {
+                padding: 8px 10px;
+                gap: 6px;
+            }
+            .btn-sidebar-toggle {
+                width: 34px;
+                height: 34px;
+                font-size: 14px;
+            }
+            .nav-brand-logo {
+                width: 30px;
+                height: 30px;
+                font-size: 13px;
+            }
+            .nav-brand-text h1 {
+                font-size: 13px;
+            }
+            .nav-badge-goal {
+                display: none;
+            }
+            .nav-user-area {
+                gap: 5px;
+                margin-left: 2px;
+            }
+            .nav-trial-pill {
+                padding: 4px 7px;
+                font-size: 11px;
+                gap: 4px;
+            }
+            .nav-login-btn {
+                padding: 4px 8px;
+                font-size: 11px;
+                gap: 4px;
+            }
+            .nav-sub-pill {
+                padding: 4px 8px;
+                font-size: 11px;
+                gap: 4px;
+            }
+            .nav-user-email-text {
+                max-width: 70px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .nav-brand-text {
+                display: none;
+            }
+            .trial-label {
+                display: none;
+            }
+            .nav-trial-pill {
+                padding: 3px 6px;
+                font-size: 10px;
+            }
+            .nav-login-btn {
+                padding: 3px 6px;
+                font-size: 10px;
+            }
+        }
             .sidebar-edge-trigger {
                 display: none !important;
                 pointer-events: none !important;
@@ -2588,10 +2725,12 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
         
         /* ─── Monetization & Auth / Paywall UI ─── */
         .nav-user-area {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
             margin-left: 8px;
+            flex-shrink: 0;
+            flex-wrap: nowrap;
         }
 
         .nav-sub-pill {
@@ -2605,12 +2744,22 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             border-radius: 9999px;
             font-size: 12px;
             font-weight: 600;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
 
         .nav-sub-pill.active {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(16, 185, 129, 0.15));
-            border: 1px solid rgba(245, 158, 11, 0.4);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(16, 185, 129, 0.18));
+            border: 1px solid rgba(245, 158, 11, 0.45);
             color: #fef08a;
+        }
+
+        .nav-expiry-countdown {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #fde047;
+            letter-spacing: 0.2px;
+            font-variant-numeric: tabular-nums;
         }
 
         .nav-sub-pill.unsubs {
@@ -2641,6 +2790,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             padding: 2px 6px;
             border-radius: 4px;
             letter-spacing: 0.5px;
+            flex-shrink: 0;
         }
 
         .nav-sub-pill.active .nav-sub-badge {
@@ -2665,6 +2815,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             align-items: center;
             transition: color 0.15s;
             margin-left: 2px;
+            flex-shrink: 0;
         }
 
         .nav-logout-btn:hover {
@@ -2683,6 +2834,8 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             font-size: 12px;
             font-weight: 600;
             font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
 
         .nav-trial-pill.warning {
@@ -2703,6 +2856,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             padding: 1px 5px;
             border-radius: 4px;
             color: #cbd5e1;
+            flex-shrink: 0;
         }
 
         .nav-login-btn {
@@ -2718,6 +2872,8 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             align-items: center;
             gap: 5px;
             transition: all 0.15s;
+            flex-shrink: 0;
+            white-space: nowrap;
         }
 
         .nav-login-btn:hover {
@@ -3146,10 +3302,11 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             </div>
             <div class="nav-user-area" id="navUserArea">
                 <?php if ($isSubscribedUser): ?>
-                    <div class="nav-sub-pill active" title="<?= htmlspecialchars($userExpiresAt ? "अमर्यादित ॲक्सेस - $userDaysLeft दिवस शिल्लक" : "अमर्यादित ॲक्सेस") ?>">
-                        <i class="fa-solid fa-crown" style="color: #fbbf24;"></i>
-                        <span class="nav-user-email-text"><?= htmlspecialchars($sessEmail) ?></span>
+                    <div class="nav-sub-pill active" title="<?= htmlspecialchars($userExpiresAt ? "दैनिक अभ्यास पास - आज रात्री १२ वाजेपर्यंत ($userHoursLeft तास शिल्लक)" : "अमर्यादित ॲक्सेस") ?>">
+                        <i class="fa-solid fa-clock" style="color: #fbbf24;"></i>
+                        <span id="navDailyExpiryTimer" class="nav-expiry-countdown"><?= $userHoursLeft ?> तास शिल्लक</span>
                         <span class="nav-sub-badge">PRO</span>
+                        <span class="nav-user-email-text" title="<?= htmlspecialchars($sessEmail) ?>"><?= htmlspecialchars($sessEmail) ?></span>
                         <button class="nav-logout-btn" onclick="handleUserLogout(event)" title="लॉगआउट (Logout)"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
                     </div>
                 <?php elseif (!empty($sessEmail)): ?>
@@ -3158,10 +3315,10 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
                         <span id="navTimerDisplay"><?= $isTrialTimeOver ? '00:00' : sprintf('%02d:%02d', floor($serverSecondsRemaining / 60), $serverSecondsRemaining % 60) ?></span>
                         <span class="trial-label" style="<?= $isTrialTimeOver ? 'background: rgba(239, 68, 68, 0.2); color: #fca5a5;' : '' ?>"><?= $isTrialTimeOver ? 'वेळ संपली' : 'मोफत' ?></span>
                     </div>
-                    <div class="nav-sub-pill unsubs" onclick="openPaywallModal()" title="सदस्यता सक्रिय करा">
+                    <div class="nav-sub-pill unsubs" onclick="openPaywallModal()" title="दैनिक पास सक्रिय करा (₹10 / दिवस)">
                         <i class="fa-solid fa-bolt" style="color: #f59e0b;"></i>
-                        <span class="nav-user-email-text"><?= htmlspecialchars($sessEmail) ?></span>
-                        <span class="nav-sub-badge buy">₹199</span>
+                        <span class="nav-user-email-text" title="<?= htmlspecialchars($sessEmail) ?>"><?= htmlspecialchars($sessEmail) ?></span>
+                        <span class="nav-sub-badge buy">₹10</span>
                         <button class="nav-logout-btn" onclick="handleUserLogout(event)" title="लॉगआउट (Logout)"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
                     </div>
                 <?php else: ?>
@@ -3408,37 +3565,37 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
         </div>
     </div>
 
-    <!-- ─── ₹199 Unlimited Access Paywall Modal (No Manual Name/Phone Required) ─── -->
+    <!-- ─── ₹10 Daily Pass Paywall Modal (Expires at 12:00 AM Midnight) ─── -->
     <div class="paywall-modal-backdrop" id="paywallModalBackdrop">
         <div class="paywall-modal-card">
             <button class="modal-close-icon" id="paywallModalCloseBtn" onclick="closePaywallModal()" title="बंद करा">
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <div class="auth-badge-header" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">
-                <i class="fa-solid fa-crown"></i> प्रीमियम अमर्यादित ॲक्सेस
+                <i class="fa-solid fa-crown"></i> दैनिक अभ्यास पास (Daily Pass)
             </div>
-            <h3 class="paywall-title">MPSC अमर्यादित सराव ॲक्सेस</h3>
-            <p class="paywall-sub">सर्व परीक्षा व सर्व सराव संच सोडवण्यासाठी १ महिन्याची संपूर्ण अमर्यादित सदस्यता.</p>
+            <h3 class="paywall-title">MPSC दैनिक सराव ॲक्सेस</h3>
+            <p class="paywall-sub">सर्व परीक्षा व सर्व सराव संच सोडवण्यासाठी आज रात्री १२:०० वाजेपर्यंत संपूर्ण अमर्यादित ॲक्सेस.</p>
 
             <div class="paywall-price-banner">
                 <div class="price-left">
-                    <span class="price-plan-name">MPSC Abhyas Unlimited</span>
+                    <span class="price-plan-name">MPSC Daily Study Pass</span>
                     <div class="price-amount-wrap">
                         <span class="price-currency">₹</span>
-                        <span class="price-number">199</span>
-                        <span class="price-period">/ १ महिना</span>
+                        <span class="price-number">10</span>
+                        <span class="price-period">/ १ दिवस (आज रात्री १२ वाजेपर्यंत)</span>
                     </div>
                 </div>
                 <div class="price-tag-pill">
-                    <i class="fa-solid fa-bolt"></i> अमर्यादित
+                    <i class="fa-solid fa-bolt"></i> आजचा पास
                 </div>
             </div>
 
             <ul class="paywall-features-list">
-                <li><i class="fa-solid fa-circle-check"></i> सर्व विषयांचे सर्व प्रश्न व संच १००% अनलॉक</li>
-                <li><i class="fa-solid fa-circle-check"></i> प्रत्येक प्रश्नाचे सविस्तर मराठी स्पष्टीकरण व नोट्स</li>
+                <li><i class="fa-solid fa-circle-check"></i> सर्व विषयांचे सर्व प्रश्न व संच आज रात्री १२:०० पर्यंत १००% अनलॉक</li>
+                <li><i class="fa-solid fa-circle-check"></i> प्रत्येक प्रश्नाचे सविस्तर मराठी स्पष्टीकरण व संदर्भ नोट्स</li>
                 <li><i class="fa-solid fa-circle-check"></i> अमर्यादित वेळ पुन्हा सोडवा (Unlimited Retakes)</li>
-                <li><i class="fa-solid fa-circle-check"></i> Google Pay, PhonePe, Paytm, Any UPI द्वारे सुरक्षित पेमेंट</li>
+                <li><i class="fa-solid fa-circle-check"></i> Google Pay, PhonePe, Paytm, Any UPI द्वारे फक्त ₹१० मध्ये सुरक्षित पेमेंट</li>
             </ul>
 
             <div class="paywall-user-preview">
@@ -3450,15 +3607,15 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             </div>
 
             <button type="button" class="btn-proceed-pay" id="btnPayRazorpay" onclick="handleRazorpayPaymentClick(event)" style="width: 100%; margin-top: 14px;">
-                <i class="fa-solid fa-lock"></i> ₹199 भरा (Pay via UPI / Razorpay)
+                <i class="fa-solid fa-bolt"></i> ₹१० भरा (Pay ₹10 via UPI / Razorpay)
             </button>
 
             <div class="paywall-status-msg" id="paywallStatusMsg">
-                <i class="fa-solid fa-spinner fa-spin"></i> पेमेंट पेज उघडत आहे... पैसे भरल्यावर ॲडमिन कडून तात्काळ ॲक्सेस सक्रिय केला जाईल.
+                <i class="fa-solid fa-spinner fa-spin"></i> पेमेंट पेज उघडत आहे... पैसे भरल्यावर Razorpay Webhook द्वारे तात्काळ ॲक्सेस सक्रिय केला जाईल.
             </div>
 
             <div class="paywall-security-note">
-                <i class="fa-solid fa-shield-halved"></i> 100% सुरक्षित पेमेंट • पेमेंट पूर्ण झाल्यावर तात्काळ ॲक्सेस सक्रिय केला जाईल.
+                <i class="fa-solid fa-shield-halved"></i> 100% सुरक्षित पेमेंट • पेमेंट पूर्ण झाल्यावर सिस्टीम तात्काळ ॲक्सेस अनलॉक करते (Validity: आज रात्री 12:00 AM पर्यंत).
             </div>
         </div>
     </div>
@@ -4370,6 +4527,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
         const SERVER_TRIAL_EXPIRED = <?= $isTrialTimeOver ? 'true' : 'false' ?>;
         const SERVER_SECONDS_REMAINING = <?= (int)$serverSecondsRemaining ?>;
         let LOGGED_IN_EMAIL = <?= json_encode($sessEmail ?? '') ?>;
+        const USER_EXPIRES_AT = <?= json_encode($userExpiresAt ?? '') ?>;
         const FREE_TRIAL_LIMIT_SECONDS = <?= (int)$trialLimitSeconds ?>;
         const GOOGLE_CLIENT_ID = <?= json_encode(defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '') ?>;
         const RAZORPAY_PAYMENT_URL = <?= json_encode(defined('RAZORPAY_PAYMENT_URL') ? RAZORPAY_PAYMENT_URL : 'https://razorpay.com/payment-link/plink_TdDywf5XdCQKM3') ?>;
@@ -4661,7 +4819,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
                 }
 
                 if (paywallStatusMsg) {
-                    paywallStatusMsg.innerHTML = '<i class="fa-solid fa-circle-check" style="color: #10b981;"></i> पेमेंट पेज उघडले आहे. पैसे भरल्यानंतर ॲडमिन कडून तात्काळ ॲक्सेस दिला जाईल. पेज आपोआप सुरू होईल.';
+                    paywallStatusMsg.innerHTML = '<i class="fa-solid fa-circle-check" style="color: #10b981;"></i> पेमेंट पेज उघडले आहे. पैसे भरल्यावर Razorpay Webhook द्वारे तात्काळ दैनिक ॲक्सेस दिला जाईल. पेज आपोआप सुरू होईल.';
                 }
             } catch (err) {
                 console.error('Payment Error:', err);
@@ -4669,12 +4827,12 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
             } finally {
                 if (btnPayRazorpay) {
                     btnPayRazorpay.disabled = false;
-                    btnPayRazorpay.innerHTML = '<i class="fa-solid fa-lock"></i> ₹199 भरा (Pay via UPI / Razorpay)';
+                    btnPayRazorpay.innerHTML = '<i class="fa-solid fa-bolt"></i> ₹१० भरा (Pay ₹10 via UPI / Razorpay)';
                 }
             }
         }
 
-        // Live Polling: Check if Admin has activated subscription
+        // Live Polling: Check if Admin or Webhook has activated subscription
         function startSubscriptionStatusPolling() {
             if (statusPollInterval) clearInterval(statusPollInterval);
             statusPollInterval = setInterval(async () => {
@@ -4684,13 +4842,13 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
                     const data = await res.json();
                     if (data && data.is_subscribed) {
                         clearInterval(statusPollInterval);
-                        alert('अभिनंदन! ॲडमिनने तुमची वर्गणी सक्रिय केली आहे. आता तुम्ही अमर्यादित सराव करू शकता.');
+                        alert('अभिनंदन! तुमचे पेमेंट यशस्वी झाले असून दैनिक अभ्यास पास (आज रात्री १२:०० पर्यंत) सक्रिय झाला आहे. आता तुम्ही अमर्यादित सराव करू शकता.');
                         window.location.reload();
                     }
                 } catch (e) {
                     // Polling silently ignores network glitches
                 }
-            }, 15000);
+            }, 8000);
         }
 
         function stopSubscriptionStatusPolling() {
@@ -4760,9 +4918,38 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
         window.addEventListener('beforeunload', () => sendEngagementHeartbeat(true));
         window.addEventListener('pagehide', () => sendEngagementHeartbeat(true));
 
-        // Start timer on page load
+        // 14. Real-time Daily Pass Expiry Countdown Timer
+        function initDailyCountdownTimer() {
+            if (!IS_USER_SUBSCRIBED || !USER_EXPIRES_AT) return;
+            const timerEl = document.getElementById('navDailyExpiryTimer');
+            if (!timerEl) return;
+
+            const expiryTs = new Date(USER_EXPIRES_AT.replace(' ', 'T')).getTime();
+
+            function updateDailyTimer() {
+                const now = Date.now();
+                const diffSec = Math.max(0, Math.floor((expiryTs - now) / 1000));
+                if (diffSec <= 0) {
+                    timerEl.textContent = 'वेळ संपली';
+                    setTimeout(() => window.location.reload(), 2000);
+                    return;
+                }
+                const hours = Math.floor(diffSec / 3600);
+                const mins = Math.floor((diffSec % 3600) / 60);
+                if (hours >= 1) {
+                    timerEl.textContent = `${hours} तास शिल्लक`;
+                } else {
+                    timerEl.textContent = `${mins} मिनिटे शिल्लक`;
+                }
+            }
+            updateDailyTimer();
+            setInterval(updateDailyTimer, 30000);
+        }
+
+        // Start timers on page load
         window.addEventListener('DOMContentLoaded', () => {
             initTrialTimer();
+            initDailyCountdownTimer();
         });
 
     </script>

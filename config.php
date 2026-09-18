@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // config.php - Direct Database & Practice Web Configuration
 error_reporting(0);
 ini_set('display_errors', '0');
@@ -18,9 +18,11 @@ if (!defined('USE_API_BRIDGE')) define('USE_API_BRIDGE', false);
 
 // Monetization & Subscription Settings
 if (!defined('FREE_TRIAL_SECONDS')) define('FREE_TRIAL_SECONDS', 3600); // 1 hour (60 minutes) free practice trial
+if (!defined('DAILY_PASS_PRICE')) define('DAILY_PASS_PRICE', 10.00); // ₹10 per day study pass
 if (!defined('GOOGLE_CLIENT_ID')) define('GOOGLE_CLIENT_ID', getenv('GOOGLE_CLIENT_ID') ?: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com');
 if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', getenv('GOOGLE_CLIENT_SECRET') ?: 'YOUR_GOOGLE_CLIENT_SECRET');
 if (!defined('RAZORPAY_PAYMENT_URL')) define('RAZORPAY_PAYMENT_URL', 'https://razorpay.com/payment-link/plink_TdDywf5XdCQKM3');
+if (!defined('RAZORPAY_WEBHOOK_SECRET')) define('RAZORPAY_WEBHOOK_SECRET', getenv('RAZORPAY_WEBHOOK_SECRET') ?: 'mpsc_webhook_secret_2026');
 if (!defined('ADMIN_SECRET_KEY')) define('ADMIN_SECRET_KEY', 'mpsc2026');
 
 function getDBConnection() {
