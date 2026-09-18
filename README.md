@@ -89,7 +89,7 @@ define('FREE_TRIAL_SECONDS', 3600); // 1-hour free practice trial
 define('DAILY_PASS_PRICE', 10.00); // ₹10 per day study pass
 define('GOOGLE_CLIENT_ID', 'your-google-client-id.apps.googleusercontent.com');
 define('GOOGLE_CLIENT_SECRET', 'your-google-client-secret');
-define('RAZORPAY_PAYMENT_URL', 'https://razorpay.com/payment-link/plink_TdDywf5XdCQKM3');
+define('RAZORPAY_PAYMENT_URL', 'https://rzp.io/rzp/FTFoJWx');
 define('RAZORPAY_WEBHOOK_SECRET', 'mpsc_webhook_secret_2026'); // Secret configured in Razorpay Webhooks
 define('ADMIN_SECRET_KEY', 'mpsc2026');
 ```

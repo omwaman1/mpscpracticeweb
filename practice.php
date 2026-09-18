@@ -670,7 +670,7 @@ if ($isAjaxRequest) {
             ")->execute([$email, $planPrice, "Razorpay UPI Payment Initiated for ₹10 Daily Pass. Phone: " . $phone . ", Name: " . $name]);
         }
 
-        $paymentUrl = defined('RAZORPAY_PAYMENT_URL') && !empty(RAZORPAY_PAYMENT_URL) ? RAZORPAY_PAYMENT_URL : 'https://razorpay.com/payment-link/plink_TdDywf5XdCQKM3';
+        $paymentUrl = defined('RAZORPAY_PAYMENT_URL') && !empty(RAZORPAY_PAYMENT_URL) ? RAZORPAY_PAYMENT_URL : 'https://rzp.io/rzp/FTFoJWx';
         echo json_encode([
             'status' => 'success',
             'payment_url' => $paymentUrl
@@ -4530,7 +4530,7 @@ $initialPracticeId = $_GET['practice_id'] ?? '';
         const USER_EXPIRES_AT = <?= json_encode($userExpiresAt ?? '') ?>;
         const FREE_TRIAL_LIMIT_SECONDS = <?= (int)$trialLimitSeconds ?>;
         const GOOGLE_CLIENT_ID = <?= json_encode(defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '') ?>;
-        const RAZORPAY_PAYMENT_URL = <?= json_encode(defined('RAZORPAY_PAYMENT_URL') ? RAZORPAY_PAYMENT_URL : 'https://razorpay.com/payment-link/plink_TdDywf5XdCQKM3') ?>;
+        const RAZORPAY_PAYMENT_URL = <?= json_encode(defined('RAZORPAY_PAYMENT_URL') ? RAZORPAY_PAYMENT_URL : 'https://rzp.io/rzp/FTFoJWx') ?>;
 
         let elapsedSeconds = 0;
         let isTrialExpired = false;
